@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LNU.GK.Second
 {
-    public class Solver
+    public class Solver2
     {
         private readonly double curant;
         private readonly int tCount;
@@ -14,34 +14,35 @@ namespace LNU.GK.Second
 
         private double c;
 
-        public Solver(double curant, int tCount, int c)
+        public Solver2(double curant, int tCount,int c)
         {
             this.curant = curant;
             this.tCount = tCount;
             this.c = c;
         }
 
-        private double Predict(int n, int j)
+        private double Step1(int n, int j)
         {
-            n = n - 1;
-            var U = T[n, j] - c * curant * (T[n, j] - T[n, j - 1]);
-
-            return U;
+            return 0.5 * (T[n, j + 1] + T[n, j]) - 1d / 3d * curant * ((T[n, j + 1]) - (T[n, j]));
         }
-        private double Correct(int n, int j)
-        {
-            n = n - 1;
-            var correctnp1 = Predict(n + 1, j);
-            var correctnp1jm1 = Predict(n + 1, j - 1);
-            var U = 0.5 * ((T[n, j] + correctnp1) - c * curant * (correctnp1 - correctnp1jm1) - c * curant * (T[n, j] - 2 * T[n, j - 1] + T[n, j - 2]));
 
-            return U;
+        public double Step2(int n, int j)
+        {
+            return T[n, j] - (2d / 3d) * curant * ((Step1(n, j)) - (Step1(n, j - 1)));
+        }
+
+        public double GetU(int n, int j)
+        {
+            n--;
+            var first = (1d / 24d) * curant * (-2 * T[n, j + 2] + 7 * (T[n, j + 1]) - 7 * (T[n, j - 1]) + 2 * (T[n, j - 2]));
+            var second = (3d / 8d) * (curant) * ((Step2(n, j + 1)) - (Step2(n, j - 1)));
+            return T[n, j] - first - second;
         }
 
         private double Predict1(int n, int j)
         {
             n = n - 1;
-            var U = T[n, j] - c * curant * (T[n, j + 1] - T[n, j]);
+            var U = T[n, j] - curant * (T[n, j + 1] - T[n, j]);
 
             return U;
         }
@@ -50,7 +51,7 @@ namespace LNU.GK.Second
             n = n - 1;
             var correctnp1 = Predict1(n + 1, j);
             var correctnp1jm1 = Predict1(n + 1, j - 1);
-            var U = 0.5 * ((T[n, j] + correctnp1) - c * curant * (correctnp1 - correctnp1jm1));
+            var U = 0.5 * ((T[n, j] + correctnp1) - curant * (correctnp1 - correctnp1jm1));
 
             return U;
         }
@@ -72,12 +73,6 @@ namespace LNU.GK.Second
             return U;
         }
 
-        private double Laks(int n, int j)
-        {
-            return 0.5 * (T[n, j + 1] + T[n, j - 1])
-                - curant * 0.5 * (T[n, j + 1] - T[n, j - 1]);
-        }
-
         public double[,] Solve(
             Func<double, double> boundary,
             Func<double, double> start,
@@ -90,16 +85,12 @@ namespace LNU.GK.Second
 
             for (int i = 1; i <= tCount; i++)
             {
-                T[i, 0] = boundary(a);
-                T[i, n] = boundary(b);
-
                 for (int j = 1; j < n; j++)
                 {
-                    T[i, j] = j == 1
-                        ? Correct1(i, j)
-                        : Correct(i, j);
-                    // T[i, j] = Laks(i, j);
+                    T[i, j] = Correct2(i,j);
                 }
+                T[i, 0] = (T[i, 1] + T[i, n]) / 2;
+                T[i, n] = T[i, 0];
             }
 
             return (double[,])T.Clone();
@@ -113,8 +104,8 @@ namespace LNU.GK.Second
             {
                 T[0, i] = start(a + h * i);
             }
-            T[0, 0] = boundary(a);
-            T[0, n] = boundary(b);
+            T[0, 0] = (T[0, 1] + T[0, n]) / 2;
+            T[0, n] = T[0, 0];
         }
     }
 }
